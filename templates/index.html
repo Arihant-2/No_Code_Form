@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>No-Code Form Builder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="form-builder">
+        <h2>No-Code Form Builder</h2>
+        <input type="text" id="formTitle" placeholder="Form Title">
+        <div id="formContainer"></div>
+        <button onclick="addField('text')">Add Text Field</button>
+        <button onclick="addField('dropdown')">Add Dropdown</button>
+        <button onclick="addField('checkbox')">Add Checkbox</button>
+        <button onclick="addField('radio')">Add Radio Buttons</button>
+        <button onclick="saveForm()">Save Form</button>
+    </div>
+
+    <script>
+        function addField(type) {
+            const container = document.getElementById("formContainer");
+            const fieldDiv = document.createElement("div");
+            fieldDiv.classList.add("form-field");
+
+            const label = document.createElement("input");
+            label.type = "text";
+            label.placeholder = "Field Label";
+            fieldDiv.appendChild(label);
+
+            let inputElement;
+            if (type === "text") {
+                inputElement = document.createElement("input");
+                inputElement.type = "text";
+            } else if (type === "dropdown") {
+                inputElement = document.createElement("select");
+                const optionsInput = document.createElement("input");
+                optionsInput.placeholder = "Options (comma-separated)";
+                optionsInput.onchange = function() {
+                    inputElement.innerHTML = "";
+                    optionsInput.value.split(',').forEach(opt => {
+                        let option = document.createElement("option");
+                        option.textContent = opt.trim();
+                        inputElement.appendChild(option);
+                    });
+                };
+                fieldDiv.appendChild(optionsInput);
+            } else if (type === "checkbox") {
+                inputElement = document.createElement("div");
+                const checkboxInput = document.createElement("input");
+                checkboxInput.type = "text";
+                checkboxInput.placeholder = "Options (comma-separated)";
+                checkboxInput.onchange = function() {
+                    inputElement.innerHTML = "";
+                    checkboxInput.value.split(',').forEach(opt => {
+                        let checkbox = document.createElement("input");
+                        checkbox.type = "checkbox";
+                        let label = document.createElement("label");
+                        label.textContent = opt.trim();
+                        inputElement.appendChild(checkbox);
+                        inputElement.appendChild(label);
+                        inputElement.appendChild(document.createElement("br"));
+                    });
+                };
+                fieldDiv.appendChild(checkboxInput);
+            } else if (type === "radio") {
+                inputElement = document.createElement("div");
+                const radioInput = document.createElement("input");
+                radioInput.type = "text";
+                radioInput.placeholder = "Options (comma-separated)";
+                radioInput.onchange = function() {
+                    inputElement.innerHTML = "";
+                    radioInput.value.split(',').forEach(opt => {
+                        let radio = document.createElement("input");
+                        radio.type = "radio";
+                        radio.name = `radioGroup${container.children.length}`;
+                        let label = document.createElement("label");
+                        label.textContent = opt.trim();
+                        inputElement.appendChild(radio);
+                        inputElement.appendChild(label);
+                        inputElement.appendChild(document.createElement("br"));
+                    });
+                };
+                fieldDiv.appendChild(radioInput);
+            }
+
+            if (inputElement) fieldDiv.appendChild(inputElement);
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Delete";
+            deleteBtn.onclick = () => container.removeChild(fieldDiv);
+            fieldDiv.appendChild(deleteBtn);
+
+            container.appendChild(fieldDiv);
+        }
+
+        function saveForm() {
+            const formTitle = document.getElementById("formTitle").value;
+            const formFields = document.querySelectorAll(".form-field");
+            let formData = { form_id: Date.now(), title: formTitle, fields: [] };
+
+            formFields.forEach(field => {
+                let label = field.children[0].value;
+                let input = field.children[1];
+
+                if (input.tagName === "INPUT" || input.tagName === "SELECT") {
+                    let type = input.type || "text";
+                    let value = input.tagName === "SELECT" ? [...input.options].map(opt => opt.text) : input.value;
+                    formData.fields.push({ label, type, value });
+                } else if (input.tagName === "DIV") {
+                    let options = [...input.children].filter(el => el.tagName === "LABEL").map(el => el.textContent);
+                    let type = field.children[1].placeholder.includes("radio") ? "radio" : "checkbox";
+                    formData.fields.push({ label, type, options });
+                }
+            });
+
+            fetch("/save_form", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData)
+            }).then(response => response.json()).then(data => alert(data.message));
+        }
+    </script>
+</body>
+</html>
